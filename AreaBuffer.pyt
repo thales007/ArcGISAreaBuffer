@@ -1,13 +1,14 @@
 #######################################
-# Title: 3DHeightTools.pyt
+# Title: AreaBuffer.pyt
 # Description: Buffer points based upon an area
 # Tools:
 # Author: Timothy Hales
 # Created: 3/13/2013
-# Last Updated: 3/13/2014
-# Version: 0.1 beta
+# Last Updated: 3/17/2014
+# Version: 0.2 beta
 # Python Version: 2.7
-# Version 0.1 Notes: Fixed some error messages, and exposed the negative bufgfer distance for the building height tool.
+# Version 0.1 Notes: Fixed some error messages, and exposed the negative buffer distance for the building height tool.
+# Version 0.2 Notes: Allowed any type of feature type for input.  Created option to select area units.
 ########################################
 import arcpy, math
 
@@ -20,42 +21,51 @@ class Toolbox(object):
         self.alias = ""
 
         # List of tool classes associated with this toolbox
-        self.tools = [Tool]
+        self.tools = [AreaBufferTool]
 
 
-class Tool(object):
+class AreaBufferTool(object):
     def __init__(self):
         """Define the tool (tool name is the name of the class)."""
-        self.label = "Tool"
+        self.label = "Area Buffer"
         self.description = ""
         self.canRunInBackground = False
 
     def getParameterInfo(self):
         """Define parameter definitions"""
-        pInputPoints = arcpy.Parameter(
-            displayName="Input point feature class",
+        pInputFC = arcpy.Parameter(
+            displayName="Input feature class",
             name="inputPoints",
             datatype="DEFeatureClass",
-            parameterType="Optional",
+            parameterType="Required",
             direction="Input")
-        pInputPoints.filter.list = ["Point"]
+        #pInputPoints.filter.list = ["Point"]
 
         pOutputBuffer = arcpy.Parameter(
             displayName="Output buffer feature class",
             name="outputBuffer",
             datatype="DEFeatureClass",
-            parameterType="Optional",
+            parameterType="Required",
             direction="Output")
         
         pInputArea = arcpy.Parameter(
-            displayName="Acres of output buffer",
+            displayName="Area of output buffer",
             name="inputArea",
-            datatype="GPString",
+            datatype="GPDouble",
             parameterType="Required",
             direction="Input")
 
+        pInputUnits = arcpy.Parameter(
+            displayName="Area units",
+            name="inputUnits",
+            datatype="GPString",
+            parameterType="Required",
+            direction="Input")
+        pInputUnits.filter.type = "ValueList"
+        pInputUnits.filter.list = ["Centimeters", "Decimal degrees", "Decimeters", "Feet", "Inches", "Kilometers",
+                                   "Meters", "Miles", "Millimeters", "Nautical Miles", "Points", "Unknown", "Yards"]
 
-        parameters = [pInputPoints, pOutputBuffer, pInputArea]
+        parameters = [pInputFC, pOutputBuffer, pInputArea, pInputUnits]
         return parameters
     
     def isLicensed(self):
@@ -77,12 +87,18 @@ class Tool(object):
         """The source code of the tool."""
         inputFC = parameters[0].value
         outputFC = parameters[1].value
-        acres = float(parameters[2].value)
+        area = parameters[2].value
+        #acres = float(parameters[2].value)
+        units = parameters[3].value
 
-        #need to read the linear unit of input FC
-        
-        areaFt = acres * 43560
-        buffDist = math.sqrt(areaFt/math.pi)
+
+       #Check to see what unit is selected.  If a two word unit is used, convert to a single word
+        if units == "Decimal degrees":
+            units = "Decimaldegrees"
+        elif units == "Nautical Miles":
+            units = "NauticalMiles"
+
+        buffDist = str(math.sqrt(area/math.pi)) + " {}".format(units)
         arcpy.AddMessage(str(buffDist))
 
 
